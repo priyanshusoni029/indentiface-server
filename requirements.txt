@@ -1,0 +1,37 @@
+# Core Flask & Database
+Flask==3.1.2
+flask-cors==6.0.2
+Flask-HTTPAuth==4.8.0
+Flask-Migrate==4.1.0
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.48
+gunicorn==25.3.0
+alembic==1.18.4
+psycopg2-binary==2.9.9
+supabase==2.13.0
+
+# Face Recognition & AI
+face_recognition_models==0.3.0
+dlib-bin
+numpy==2.4.1
+opencv-python==4.13.0.90
+opencv-contrib-python==4.13.0.90
+ultralytics==8.4.7
+ultralytics-thop==2.0.18
+scipy==1.17.0
+pillow==12.1.0
+
+# Utilities
+requests==2.32.5
+urllib3==2.6.3
+python-dateutil==2.9.0.post0
+tenacity==9.1.2
+click==8.3.1
+Werkzeug==3.1.5
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+itsdangerous==2.2.0
+blinker==1.9.0
+certifi==2026.1.4
+charset-normalizer==3.4.4
+idna==3.11

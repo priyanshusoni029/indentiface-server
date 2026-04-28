@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IdentiFace Admin{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+    {% block head_extra %}{% endblock %}
+
+    <!-- Inline theme init: runs before first paint to prevent flash -->
+    <script>
+        (function () {
+            var t = localStorage.getItem('admin-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+</head>
+<body>
+
+<div class="q-layout">
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    <aside class="q-sidebar">
+
+        <!-- Logo -->
+        <div class="q-sidebar-logo">
+            <div class="q-logo-mark">IF</div>
+            <div>
+                <div class="q-brand">IdentiFace</div>
+                <div class="q-brand-sub">ADMIN</div>
+            </div>
+        </div>
+
+        <!-- Nav -->
+        <nav class="q-sidebar-nav">
+            <div class="q-sidebar-section">Pages</div>
+
+            <a href="/admin/attendance"
+               class="q-sidebar-item {% if active_page == 'attendance' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="/admin"
+               class="q-sidebar-item {% if active_page == 'settings' %}active{% endif %}">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+
+            <div class="q-sidebar-divider"></div>
+
+            {% if active_page == 'attendance' %}
+            {# On the dashboard, these buttons switch tabs in-place #}
+            <div class="q-sidebar-section">Approvals</div>
+
+            <button class="q-sidebar-item" data-tab="registrations" onclick="switchTab('registrations')">
+                <i class="fas fa-user-plus"></i> Registrations
+                <span class="q-sidebar-badge" id="sb-reg-badge" style="display:none;">0</span>
+            </button>
+            <button class="q-sidebar-item" data-tab="biometrics" onclick="switchTab('biometrics')">
+                <i class="fas fa-fingerprint"></i> Biometrics
+                <span class="q-sidebar-badge" id="sb-bio-badge" style="display:none;">0</span>
+            </button>
+
+            <div class="q-sidebar-divider"></div>
+            <div class="q-sidebar-section">Insights</div>
+
+            <button class="q-sidebar-item" data-tab="heatmap" onclick="switchTab('heatmap')">
+                <i class="fas fa-calendar-alt"></i> Heatmap
+            </button>
+            <button class="q-sidebar-item" data-tab="analytics" onclick="switchTab('analytics')">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </button>
+
+            {% else %}
+            {# On all other pages, these are cross-page links that restore a tab via sessionStorage #}
+            <div class="q-sidebar-section">Quick Actions</div>
+
+            <a href="/admin/attendance"
+               onclick="sessionStorage.setItem('openTab','registrations')"
+               class="q-sidebar-item">
+                <i class="fas fa-user-plus"></i> Registrations
+                <span class="q-sidebar-badge" id="sb-reg-badge" style="display:none;">0</span>
+            </a>
+            <a href="/admin/attendance"
+               onclick="sessionStorage.setItem('openTab','biometrics')"
+               class="q-sidebar-item">
+                <i class="fas fa-fingerprint"></i> Biometrics
+                <span class="q-sidebar-badge" id="sb-bio-badge" style="display:none;">0</span>
+            </a>
+
+            <div class="q-sidebar-divider"></div>
+            <div class="q-sidebar-section">Tools</div>
+
+            <a href="/refresh_face_database" class="q-sidebar-item">
+                <i class="fas fa-sync-alt"></i> Refresh Face DB
+            </a>
+            <a href="/admin/attendance"
+               onclick="sessionStorage.setItem('openTab','analytics')"
+               class="q-sidebar-item">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </a>
+            <a href="/admin/attendance"
+               onclick="sessionStorage.setItem('openTab','heatmap')"
+               class="q-sidebar-item">
+                <i class="fas fa-calendar-alt"></i> Heatmap
+            </a>
+            {% endif %}
+        </nav>
+
+        <!-- Profile footer -->
+        <div class="q-sidebar-footer">
+
+            <!-- Trigger row -->
+            <div id="admin-profile-trigger"
+                 style="display:flex;align-items:center;gap:8px;padding:6px 8px;
+                        border-radius:var(--radius-sm);cursor:pointer;
+                        transition:background var(--dur-fast);"
+                 onmouseover="this.style.background='rgba(99,102,241,.08)'"
+                 onmouseout="this.style.background='transparent'"
+                 onclick="toggleProfileCard(event)">
+                <div class="q-avatar" style="width:30px;height:30px;font-size:10px;flex-shrink:0;">AD</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-700);">Administrator</div>
+                    <div style="font-size:10px;color:var(--text-400);">admin@system</div>
+                </div>
+                <i class="fas fa-chevron-up" id="profile-chevron"
+                   style="font-size:10px;color:var(--text-400);flex-shrink:0;transition:transform .2s;"></i>
+            </div>
+
+            <!-- Profile card (hidden by default, toggled by base.js) -->
+            <div id="admin-profile-card" style="
+                    display:none; position:absolute; bottom:72px; left:12px; right:12px;
+                    background:var(--surface-200, #ffffff); backdrop-filter:none;
+                    border:1px solid var(--border-100); border-radius:var(--radius-md);
+                    padding:14px; box-shadow:0 -4px 24px rgba(0,0,0,.12); z-index:1000;">
+
+                <!-- Header -->
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                    <div class="q-avatar" style="width:40px;height:40px;font-size:13px;flex-shrink:0;">AD</div>
+                    <div>
+                        <div style="font-size:13px;font-weight:700;color:var(--text-700);">Administrator</div>
+                        <div style="display:inline-flex;align-items:center;gap:4px;margin-top:2px;
+                                    background:rgba(99,102,241,.12);border-radius:20px;padding:2px 8px;">
+                            <i class="fas fa-shield-alt" style="font-size:9px;color:#6366f1;"></i>
+                            <span style="font-size:10px;color:#6366f1;font-weight:600;">Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info rows -->
+                <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px;
+                            padding:10px;background:var(--surface-100);border-radius:var(--radius-sm);">
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;color:var(--text-400);display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-user" style="width:12px;"></i> Username
+                        </span>
+                        <span style="font-size:11px;font-weight:600;color:var(--text-700);">admin</span>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;color:var(--text-400);display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-clock" style="width:12px;"></i> Logged in
+                        </span>
+                        <span style="font-size:11px;font-weight:600;color:var(--text-700);" id="profile-login-time">—</span>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;color:var(--text-400);display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-hourglass-half" style="width:12px;"></i> Session
+                        </span>
+                        <span style="font-size:11px;font-weight:600;" id="profile-session-status">Active</span>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;color:var(--text-400);display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-database" style="width:12px;"></i> Total records
+                        </span>
+                        <span style="font-size:11px;font-weight:600;color:var(--text-700);" id="profile-total-records">—</span>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:11px;color:var(--text-400);display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-users" style="width:12px;"></i> Known faces
+                        </span>
+                        <span style="font-size:11px;font-weight:600;color:var(--text-700);" id="profile-known-faces">—</span>
+                    </div>
+
+                </div>
+
+                <!-- Logout -->
+                <a href="/admin/logout"
+                   onclick="return confirm('Are you sure you want to logout?')"
+                   style="display:flex;align-items:center;justify-content:center;gap:7px;
+                          padding:8px;border-radius:var(--radius-sm);text-decoration:none;
+                          background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
+                          color:#ef4444;font-size:12px;font-weight:600;
+                          transition:background var(--dur-fast);"
+                   onmouseover="this.style.background='rgba(239,68,68,.16)'"
+                   onmouseout="this.style.background='rgba(239,68,68,.08)'">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ══════════ MAIN ══════════ -->
+    <div class="q-main">
+
+        <!-- Mini topbar -->
+        <div class="q-minibar" id="q-minibar">
+            <div id="bio-alert-box" class="q-alert q-alert-warn"
+                 style="display:none;flex:1;margin:0 12px 0 0;padding:8px 12px;">
+                <span class="q-alert-icon"><i class="fas fa-fingerprint"></i></span>
+                <div class="q-alert-text">
+                    <div class="q-alert-title">Biometric Requests Pending</div>
+                    <div class="q-alert-sub" id="bio-alert-msg"></div>
+                </div>
+                {% if active_page == 'attendance' %}
+                <a href="#" class="q-alert-action"
+                   onclick="switchTab('biometrics');return false;">Review →</a>
+                {% else %}
+                <a href="/admin/attendance" class="q-alert-action"
+                   onclick="sessionStorage.setItem('openTab','biometrics')">Review →</a>
+                {% endif %}
+            </div>
+
+            <div id="reg-alert-box" class="q-alert q-alert-info"
+                 style="display:none;flex:1;margin:0 12px 0 0;padding:8px 12px;">
+                <span class="q-alert-icon"><i class="fas fa-user-plus"></i></span>
+                <div class="q-alert-text">
+                    <div class="q-alert-title">New Registration Requests</div>
+                    <div class="q-alert-sub" id="reg-alert-msg"></div>
+                </div>
+                {% if active_page == 'attendance' %}
+                <a href="#" class="q-alert-action"
+                   onclick="switchTab('registrations');return false;">Review →</a>
+                {% else %}
+                <a href="/admin/attendance" class="q-alert-action"
+                   onclick="sessionStorage.setItem('openTab','registrations')">Review →</a>
+                {% endif %}
+            </div>
+
+            <button class="q-notif-btn" id="theme-toggle-btn" onclick="toggleTheme()"
+                    title="Switch theme" style="width:34px;height:34px;flex-shrink:0;">
+                <i class="fas fa-circle-half-stroke" id="theme-icon"></i>
+            </button>
+            <button class="q-notif-btn" id="notif-btn" title="Pending requests">
+                <i class="fas fa-bell"></i>
+                <span class="q-notif-dot" id="notif-dot" style="display:none;"></span>
+            </button>
+            <div class="q-topbar-date" id="topbar-date"></div>
+        </div>
+
+        <!-- Page content — each child fills this -->
+        <div class="q-page">
+            {% block content %}{% endblock %}
+        </div>
+
+    </div><!-- end q-main -->
+</div><!-- end q-layout -->
+
+<!-- Toast container — available on every page -->
+<div class="q-toast-wrap" id="toast-wrap"></div>
+
+<!-- base.js must load before any page-specific script -->
+<script src="{{ url_for('static', filename='base.js') }}"></script>
+
+<!-- Page-specific scripts (Chart.js, Leaflet, admin_attendance.js, etc.) -->
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

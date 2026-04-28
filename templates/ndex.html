@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IdentiFace — Live Monitor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='quantum.css') }}">
+    <style>
+        .video-container { background:#0f0f1e; position:relative; min-height:320px; display:flex; align-items:center; justify-content:center; }
+        .video-container img { width:100%; display:block; }
+        .video-placeholder { display:flex; flex-direction:column; align-items:center; gap:10px; color:#3a4a5a; padding:60px 40px; text-align:center; }
+        .video-placeholder i { font-size:40px; opacity:.3; }
+        .video-placeholder p { font-size:13px; opacity:.4; margin:0; }
+        .attendance-scroll { max-height:340px; overflow-y:auto; }
+        .attendance-scroll::-webkit-scrollbar { width:4px; }
+        .attendance-scroll::-webkit-scrollbar-track { background:#f9fafb; }
+        .attendance-scroll::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:2px; }
+        .unregistered-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:0.5px solid #f3f4f6; animation:q-slide-up .3s ease both; }
+        .unregistered-item:last-child { border-bottom:none; }
+        .unregistered-dot { width:8px; height:8px; border-radius:50%; background:#ef4444; flex-shrink:0; animation:q-pulse 1s infinite; }
+        .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .stat-box { background:#f9fafb; border-radius:8px; padding:12px 14px; }
+        .stat-box-label { font-size:11px; color:#9ca3af; margin-bottom:4px; }
+        .stat-box-val { font-size:20px; font-weight:600; color:#111827; }
+    </style>
+</head>
+<body>
+
+    <!-- ── Topbar ── -->
+    <div class="q-topbar">
+        <div class="q-logo-mark">IF</div>
+        <div>
+            <div class="q-brand">IdentiFace</div>
+            <div class="q-brand-sub">LIVE MONITOR</div>
+        </div>
+        <nav class="q-nav">
+            <a href="/" class="q-nav-link active">Live Monitor</a>
+            <a href="/admin/attendance" class="q-nav-link">Dashboard</a>
+            <a href="/admin" class="q-nav-link">Settings</a>
+        </nav>
+        <div class="q-topbar-right">
+            <button class="q-notif-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch Theme">
+                <i class="fas fa-moon"></i>
+            </button>
+            <div id="topbar-time" style="font-size:13px;font-weight:500;color:#111827;font-variant-numeric:tabular-nums;"></div>
+            <div id="topbar-date" class="q-topbar-date"></div>
+            <div class="q-avatar">IF</div>
+        </div>
+    </div>
+
+    <!-- ── Page ── -->
+    <div class="q-page">
+        <div class="q-page-title">Live Monitor</div>
+        <div class="q-page-sub">Real-time face recognition · YOLOv8 + Line crossing detection</div>
+
+        <!-- ── Stat cards ── -->
+        <div class="q-stat-grid" style="margin-bottom:20px;">
+            <div class="q-stat-card">
+                <div class="q-stat-top">
+                    <div class="q-stat-label">SESSION PRESENT</div>
+                    <div class="q-stat-icon" style="background:#ede9fe;"><i class="fas fa-user-check" style="color:#4f46e5;font-size:13px;"></i></div>
+                </div>
+                <div class="q-stat-value" id="sc-present">{{ attendance|length }}</div>
+                <div class="q-stat-footer">This session only</div>
+            </div>
+            <div class="q-stat-card">
+                <div class="q-stat-top">
+                    <div class="q-stat-label">UNREGISTERED</div>
+                    <div class="q-stat-icon" style="background:#fee2e2;"><i class="fas fa-user-times" style="color:#dc2626;font-size:13px;"></i></div>
+                </div>
+                <div class="q-stat-value" id="sc-unreg" style="color:#dc2626;">0</div>
+                <div class="q-stat-footer">Detected this session</div>
+            </div>
+            <div class="q-stat-card">
+                <div class="q-stat-top">
+                    <div class="q-stat-label">TOTAL DB RECORDS</div>
+                    <div class="q-stat-icon" style="background:#dcfce7;"><i class="fas fa-database" style="color:#059669;font-size:13px;"></i></div>
+                </div>
+                <div class="q-stat-value" id="sc-total">—</div>
+                <div class="q-stat-footer">All time</div>
+            </div>
+            <div class="q-stat-card">
+                <div class="q-stat-top">
+                    <div class="q-stat-label">KNOWN FACES</div>
+                    <div class="q-stat-icon" style="background:#dbeafe;"><i class="fas fa-id-card" style="color:#2563eb;font-size:13px;"></i></div>
+                </div>
+                <div class="q-stat-value" id="sc-faces">—</div>
+                <div class="q-stat-footer">Registered in DB</div>
+            </div>
+        </div>
+
+        <!-- ── Main row: feed + attendance ── -->
+        <div class="q-grid-2" style="margin-bottom:20px;">
+
+            <!-- feed -->
+            <div class="q-module">
+                <div class="q-mod-head">
+                    <div class="q-mod-title">
+                        <i class="fas fa-video" style="color:#4f46e5;"></i>
+                        Live Camera Feed
+                        <span class="q-live-badge" id="feed-live-badge" style="display:none;">
+                            <span class="q-live-dot"></span>LIVE
+                        </span>
+                    </div>
+                    <label class="q-toggle">
+                        <input type="checkbox" id="feed-toggle" onchange="toggleFeed(this.checked)">
+                        <span class="q-toggle-track"><span class="q-toggle-thumb"></span></span>
+                        <span class="q-toggle-label" id="feed-toggle-label">Enable feed</span>
+                    </label>
+                </div>
+                <div class="video-container" id="feed-area">
+                    <div class="video-placeholder">
+                        <i class="fas fa-video-slash"></i>
+                        <p>Live feed is disabled<br>Toggle to enable camera stream</p>
+                    </div>
+                </div>
+                <div style="padding:10px 16px;border-top:0.5px solid #f3f4f6;display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:12px;color:#6b7280;"><i class="fas fa-minus" style="color:#22c55e;margin-right:4px;"></i>Green line = entry point</span>
+                    <span style="margin-left:auto;font-size:12px;color:#9ca3af;">Line crossing detection active</span>
+                </div>
+            </div>
+
+            <!-- attendance -->
+            <div class="q-module">
+                <div class="q-mod-head">
+                    <div class="q-mod-title">
+                        <i class="fas fa-clipboard-check" style="color:#4f46e5;"></i>
+                        Session Attendance
+                        <span class="q-live-badge"><span class="q-live-dot"></span>AUTO</span>
+                    </div>
+                    <button class="q-mod-action" onclick="fetchAttendance()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div class="attendance-scroll">
+                    <table class="q-table">
+                        <thead>
+                            <tr><th>#</th><th>Name</th><th>Time</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="attendance-body">
+                            {% for record in attendance %}
+                            <tr>
+                                <td style="color:#9ca3af;">{{ loop.index }}</td>
+                                <td>{{ record.Name }}</td>
+                                <td style="font-variant-numeric:tabular-nums;">{{ record.Time }}</td>
+                                <td>
+                                    {% if record.Status == "Already Marked" %}
+                                        <span class="q-pill pill-absent">Already Marked</span>
+                                    {% else %}
+                                        <span class="q-pill pill-present">Present</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not attendance %}
+                            <tr class="empty-row">
+                                <td colspan="4">
+                                    <div class="q-empty" style="padding:32px;">
+                                        <div class="q-empty-icon"><i class="fas fa-clipboard" style="font-size:22px;color:#9ca3af;"></i></div>
+                                        <div class="q-empty-title">No one marked yet</div>
+                                        <div class="q-empty-sub">Attendance will appear as faces are detected crossing the line</div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="padding:10px 16px;border-top:0.5px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12px;color:#6b7280;">Total: <strong id="attendance-count" style="color:#111827;">{{ attendance|length }}</strong> records</span>
+                    <span style="font-size:12px;color:#9ca3af;" id="last-update">Just now</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Bottom row: unregistered + db controls ── -->
+        <div class="q-grid-2">
+
+            <!-- unregistered faces -->
+            <div class="q-module">
+                <div class="q-mod-head">
+                    <div class="q-mod-title">
+                        <i class="fas fa-exclamation-triangle" style="color:#d97706;"></i>
+                        Unregistered Faces
+                    </div>
+                    <span class="q-pill pill-absent" id="unregistered-count" style="font-size:11px;">0 detected</span>
+                </div>
+                <div id="unregistered-container">
+                    <div class="q-empty" style="padding:32px 24px;">
+                        <div class="q-empty-icon"><i class="fas fa-check-circle" style="font-size:22px;color:#059669;"></i></div>
+                        <div class="q-empty-title" style="color:#059669;">All clear</div>
+                        <div class="q-empty-sub">No unregistered faces detected in this session</div>
+                    </div>
+                </div>
+                <div style="padding:10px 16px;border-top:0.5px solid #f3f4f6;">
+                    <span style="font-size:11px;color:#9ca3af;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Each face gets 3 recognition attempts before being flagged</span>
+                </div>
+            </div>
+
+            <!-- db controls -->
+            <div class="q-module">
+                <div class="q-mod-head">
+                    <div class="q-mod-title">
+                        <i class="fas fa-database" style="color:#4f46e5;"></i>
+                        Database Controls
+                    </div>
+                    <button class="q-mod-action" onclick="getDatabaseStats()">
+                        <i class="fas fa-sync-alt"></i> Refresh stats
+                    </button>
+                </div>
+                <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:0.5px solid #f3f4f6;">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="q-btn q-btn-outline" onclick="fetchSQLiteAttendance()" style="flex:1;min-width:140px;">
+                            <i class="fas fa-history" style="color:#4f46e5;"></i> All Records
+                        </button>
+                        <button class="q-btn q-btn-outline" onclick="fetchTodaySQLite()" style="flex:1;min-width:140px;">
+                            <i class="fas fa-calendar-day" style="color:#059669;"></i> Today's Full List
+                        </button>
+                        <button class="q-btn q-btn-outline" onclick="getDatabaseStats()" style="flex:1;min-width:140px;">
+                            <i class="fas fa-chart-bar" style="color:#d97706;"></i> Statistics
+                        </button>
+                    </div>
+                </div>
+                <div id="stats-container" style="padding:14px 16px;">
+                    <div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0;">
+                        <i class="fas fa-chart-line" style="margin-right:6px;"></i>
+                        Click a button above to view data
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- footer -->
+        <div style="text-align:center;padding:24px 0 8px;font-size:12px;color:#9ca3af;">
+            <i class="fas fa-cogs" style="margin-right:4px;"></i> Powered by YOLOv8 + Face Recognition + Flask &nbsp;·&nbsp;
+            <i class="fas fa-clock" style="margin-right:4px;"></i> Real-time Processing &nbsp;·&nbsp;
+            <i class="fas fa-shield-alt" style="margin-right:4px;"></i> Secure & Efficient
+        </div>
+    </div>
+
+    <div class="q-toast-wrap" id="toast-wrap"></div>
+
+    <script>
+        // ── Clock ──
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('topbar-time').textContent =
+                now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+            document.getElementById('topbar-date').textContent =
+                now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // ── Feed toggle ──
+        function toggleFeed(enabled) {
+            const area  = document.getElementById('feed-area');
+            const badge = document.getElementById('feed-live-badge');
+            const label = document.getElementById('feed-toggle-label');
+            if (enabled) {
+                area.innerHTML = '';
+                const img = document.createElement('img');
+                img.src   = '/video_feed?t=' + Date.now();
+                img.alt   = 'Live Feed';
+                img.style.cssText = 'width:100%;display:block;';
+                img.onerror = () => {
+                    area.innerHTML = '<div class="video-placeholder"><i class="fas fa-exclamation-triangle" style="color:#d97706;font-size:32px;"></i><p>Could not connect to camera<br>Check server is running</p></div>';
+                    badge.style.display = 'none';
+                    label.textContent = 'Enable feed';
+                    document.getElementById('feed-toggle').checked = false;
+                };
+                area.appendChild(img);
+                badge.style.display = 'inline-flex';
+                label.textContent = 'Disable feed';
+            } else {
+                area.innerHTML = '<div class="video-placeholder"><i class="fas fa-video-slash"></i><p>Live feed is disabled<br>Toggle to enable camera stream</p></div>';
+                badge.style.display = 'none';
+                label.textContent = 'Enable feed';
+            }
+        }
+
+        // ── Fetch session attendance ──
+        function fetchAttendance() {
+            fetch('/get_attendance')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('attendance-body');
+                    document.getElementById('attendance-count').textContent = data.length;
+                    document.getElementById('sc-present').textContent = data.length;
+                    document.getElementById('last-update').textContent =
+                        new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+                    if (!data.length) {
+                        tbody.innerHTML = `<tr class="empty-row"><td colspan="4"><div class="q-empty" style="padding:32px;">
+                            <div class="q-empty-icon"><i class="fas fa-clipboard" style="font-size:22px;color:#9ca3af;"></i></div>
+                            <div class="q-empty-title">No one marked yet</div></div></td></tr>`;
+                        return;
+                    }
+                    tbody.innerHTML = data.map((r, i) => `
+                        <tr>
+                            <td style="color:#9ca3af;">${i+1}</td>
+                            <td>${r.Name}</td>
+                            <td style="font-variant-numeric:tabular-nums;">${r.Time}</td>
+                            <td>${r.Status === 'Already Marked'
+                                ? '<span class="q-pill pill-absent">Already Marked</span>'
+                                : '<span class="q-pill pill-present">Present</span>'}</td>
+                        </tr>`).join('');
+                }).catch(() => {});
+        }
+
+        // ── Fetch unregistered faces ──
+        function fetchUnregistered() {
+            fetch('/get_unregistered_faces')
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('unregistered-container');
+                    const badge     = document.getElementById('unregistered-count');
+                    document.getElementById('sc-unreg').textContent = data.length;
+                    badge.textContent = `${data.length} detected`;
+                    if (!data.length) {
+                        container.innerHTML = `<div class="q-empty" style="padding:32px 24px;">
+                            <div class="q-empty-icon"><i class="fas fa-check-circle" style="font-size:22px;color:#059669;"></i></div>
+                            <div class="q-empty-title" style="color:#059669;">All clear</div>
+                            <div class="q-empty-sub">No unregistered faces detected in this session</div></div>`;
+                        return;
+                    }
+                    container.innerHTML = data.map((f, i) => `
+                        <div class="unregistered-item" style="animation-delay:${i*.05}s;">
+                            <div class="unregistered-dot"></div>
+                            <div>
+                                <div style="font-size:13px;font-weight:500;color:#111827;">Track ID: ${f.track_id || '—'}</div>
+                                <div style="font-size:11px;color:#9ca3af;">${f.time || '—'} · ${f.message || 'Unregistered face'}</div>
+                            </div>
+                            <span class="q-pill pill-unknown" style="margin-left:auto;font-size:10px;">Unknown</span>
+                        </div>`).join('');
+                }).catch(() => {});
+        }
+
+        // ── SQLite all records ──
+        function fetchSQLiteAttendance() {
+            const c = document.getElementById('stats-container');
+            c.innerHTML = '<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px;">Loading...</div>';
+            fetch('/get_sqlite_attendance')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.length) { c.innerHTML = '<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px;">No records found</div>'; return; }
+                    c.innerHTML = `<div style="overflow-x:auto;max-height:200px;overflow-y:auto;">
+                        <table class="q-table">
+                            <thead><tr><th>Name</th><th>Date</th><th>Time</th></tr></thead>
+                            <tbody>${data.slice(0,50).map(r=>`<tr>
+                                <td>${r.Name}</td><td>${r.Date}</td><td>${r.Time}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                        ${data.length>50?`<div style="font-size:11px;color:#9ca3af;padding:8px 16px;">Showing 50 of ${data.length} records</div>`:''}
+                    </div>`;
+                }).catch(() => { c.innerHTML = '<div style="color:#dc2626;padding:12px;">Failed to load</div>'; });
+        }
+
+        // ── Today SQLite ──
+        function fetchTodaySQLite() {
+            const c = document.getElementById('stats-container');
+            c.innerHTML = '<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px;">Loading...</div>';
+            fetch('/get_today_attendance_sqlite')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.length) { c.innerHTML = '<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px;">No records for today</div>'; return; }
+                    c.innerHTML = `<div style="overflow-x:auto;max-height:200px;overflow-y:auto;">
+                        <table class="q-table">
+                            <thead><tr><th>Name</th><th>Time</th></tr></thead>
+                            <tbody>${data.map(r=>`<tr><td>${r.Name}</td><td>${r.Time}</td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>`;
+                }).catch(() => { c.innerHTML = '<div style="color:#dc2626;padding:12px;">Failed to load</div>'; });
+        }
+
+        // ── Database stats ──
+        function getDatabaseStats() {
+            const c = document.getElementById('stats-container');
+            c.innerHTML = '<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px;">Loading...</div>';
+            fetch('/get_database_stats')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('sc-total').textContent  = data.total_attendance_records || '—';
+                    document.getElementById('sc-faces').textContent  = data.known_faces_in_csv || '—';
+                    c.innerHTML = `<div class="stats-grid">
+                        <div class="stat-box"><div class="stat-box-label">Total records</div><div class="stat-box-val">${data.total_attendance_records}</div></div>
+                        <div class="stat-box"><div class="stat-box-label">Today's records</div><div class="stat-box-val">${data.today_attendance_count}</div></div>
+                        <div class="stat-box"><div class="stat-box-label">Unique persons</div><div class="stat-box-val">${data.unique_persons}</div></div>
+                        <div class="stat-box"><div class="stat-box-label">Known faces</div><div class="stat-box-val">${data.known_faces_in_csv}</div></div>
+                    </div>
+                    <div style="margin-top:10px;font-size:11px;color:#9ca3af;padding:0 2px;">
+                        Latest: ${data.latest_record || '—'}
+                    </div>`;
+                }).catch(() => { c.innerHTML = '<div style="color:#dc2626;padding:12px;">Failed to load</div>'; });
+        }
+
+        // ── Auto-refresh ──
+        setInterval(fetchAttendance,    10000);
+        setInterval(fetchUnregistered,   5000);
+        setInterval(getDatabaseStats,   30000);
+
+        // ── Init ──
+        getDatabaseStats();
+        fetchUnregistered();
+    </script>
+</body>
+</html>

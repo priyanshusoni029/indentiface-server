@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% set active_page = 'attendance' %}
+
+{% block title %}IdentiFace — Admin Dashboard{% endblock %}
+
+{% block content %}
+
+        <!-- Page content -->
+        
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap;">
+            <div>
+                <div class="q-page-title" style="margin-bottom:2px;">Dashboard</div>
+                <div class="q-page-sub">Attendance monitoring and management</div>
+            </div>
+                <!-- Period switcher — shared by rings + analytics -->
+                <div class="q-period-switcher" id="period-switcher">
+                    <button class="q-period-btn active" data-period="today"   onclick="setPeriod('today')">Today</button>
+                    <button class="q-period-btn"        data-period="week"    onclick="setPeriod('week')">This week</button>
+                    <button class="q-period-btn"        data-period="month"   onclick="setPeriod('month')">This month</button>
+                </div>
+            </div>
+
+            <!-- ── BENTO STAT GRID ── -->
+            <div class="q-bento-grid" style="margin-bottom:20px;">
+
+                <!-- Row 1: 7-day trend — full width accent -->
+                <div class="q-bento-tile q-bento-accent q-bento-full">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                        <div class="q-bento-lab" style="color:rgba(255,255,255,.6);">7-day trend</div>
+                        <div class="q-bento-spark-footer" id="stat-present-sub" style="margin:0;"></div>
+                    </div>
+                    <svg class="q-bento-sparkline" id="bento-spark-svg" viewBox="0 0 100 34" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="bsg" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="rgba(255,255,255,.35)"/>
+                                <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                            </linearGradient>
+                        </defs>
+                        <polygon id="bento-spark-area" points="" fill="url(#bsg)"/>
+                        <polyline id="bento-spark-line" points="" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+                <!-- Present today -->
+                <div class="q-bento-tile q-bento-ring-tile" onclick="switchTab('today')" style="cursor:pointer;">
+                    <div class="q-bento-lab">Present</div>
+                    <div class="q-bento-ring-row">
+                        <div>
+                            <div class="q-bento-num" id="stat-present">—</div>
+                            <div class="q-bento-ring-sub" id="bento-date-label"></div>
+                        </div>
+                        <svg class="q-bento-ring-svg" viewBox="0 0 44 44">
+                            <circle class="q-ring-track" cx="22" cy="22" r="17"/>
+                            <circle class="q-ring-fill" id="ring-present" cx="22" cy="22" r="17"
+                                    stroke="#16a34a"
+                                    stroke-dasharray="0 107"
+                                    stroke-dashoffset="27"/>
+                            <text class="q-ring-label" x="22" y="26" fill="#16a34a" id="ring-present-pct">—</text>
+                        </svg>
+                    </div>
+                    <span class="q-bento-live-badge" style="align-self:flex-start;margin-top:4px;"><span class="q-bento-dot"></span>Live</span>
+                </div>
+
+                <!-- Onsite -->
+                <div class="q-bento-tile q-bento-ring-tile" onclick="switchTab('today')" style="cursor:pointer;">
+                    <div class="q-bento-lab">Onsite</div>
+                    <div class="q-bento-ring-row">
+                        <div>
+                            <div class="q-bento-num" style="color:#7C3AED;" id="stat-onsite">—</div>
+                            <div class="q-bento-ring-sub" id="stat-onsite-sub"></div>
+                        </div>
+                        <svg class="q-bento-ring-svg" viewBox="0 0 44 44">
+                            <circle class="q-ring-track" cx="22" cy="22" r="17"/>
+                            <circle class="q-ring-fill" id="ring-onsite" cx="22" cy="22" r="17"
+                                    stroke="#7C3AED"
+                                    stroke-dasharray="0 107"
+                                    stroke-dashoffset="27"/>
+                            <text class="q-ring-label" x="22" y="26" fill="#7C3AED" id="ring-onsite-pct">—</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Remote -->
+                <div class="q-bento-tile q-bento-ring-tile" onclick="switchTab('today')" style="cursor:pointer;">
+                    <div class="q-bento-lab">Remote</div>
+                    <div class="q-bento-ring-row">
+                        <div>
+                            <div class="q-bento-num" style="color:#007F80;" id="stat-remote">—</div>
+                            <div class="q-bento-ring-sub" id="stat-remote-sub"></div>
+                        </div>
+                        <svg class="q-bento-ring-svg" viewBox="0 0 44 44">
+                            <circle class="q-ring-track" cx="22" cy="22" r="17"/>
+                            <circle class="q-ring-fill" id="ring-remote" cx="22" cy="22" r="17"
+                                    stroke="#007F80"
+                                    stroke-dasharray="0 107"
+                                    stroke-dashoffset="27"/>
+                            <text class="q-ring-label" x="22" y="26" fill="#007F80" id="ring-remote-pct">—</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Pending -->
+                <div class="q-bento-tile q-bento-ring-tile" onclick="switchTab('registrations')" style="cursor:pointer;">
+                    <div class="q-bento-lab">Pending</div>
+                    <div class="q-bento-ring-row">
+                        <div>
+                            <div class="q-bento-num" style="color:#d97706;" id="stat-pending">—</div>
+                            <div class="q-bento-ring-sub" id="stat-pending-sub"></div>
+                        </div>
+                        <svg class="q-bento-ring-svg" viewBox="0 0 44 44">
+                            <circle class="q-ring-track" cx="22" cy="22" r="17"/>
+                            <circle class="q-ring-fill" id="ring-pending" cx="22" cy="22" r="17"
+                                    stroke="#d97706"
+                                    stroke-dasharray="0 107"
+                                    stroke-dashoffset="27"/>
+                            <text class="q-ring-label" x="22" y="26" fill="#d97706" id="ring-pending-pct">—</text>
+                        </svg>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ── TABS MODULE ── -->
+            <div class="q-module" style="animation-delay:.3s;">
+                <div class="q-tabs" id="q-tabs-bar">
+                    <button class="q-tab active" data-tab="today"         onclick="switchTab('today')">Today</button>
+                    <button class="q-tab"         data-tab="all"           onclick="switchTab('all')">All Records</button>
+                    <button class="q-tab"         data-tab="range"         onclick="switchTab('range')">Date Range</button>
+                    <button class="q-tab"         data-tab="registrations" onclick="switchTab('registrations')">
+                        Registrations
+                        <span class="q-tab-badge" id="registrations-pending-badge" style="display:none;">0</span>
+                    </button>
+                    <button class="q-tab"         data-tab="biometrics"    onclick="switchTab('biometrics')">
+                        Biometrics
+                        <span class="q-tab-badge" id="biometrics-pending-badge" style="display:none;">0</span>
+                    </button>
+                    <button class="q-tab"         data-tab="heatmap"       onclick="switchTab('heatmap')">
+                        <i class="fas fa-calendar-alt" style="font-size:11px;opacity:.8;"></i> Heatmap
+                    </button>
+                    <button class="q-tab"         data-tab="analytics"     onclick="switchTab('analytics')">
+                        <i class="fas fa-chart-bar" style="font-size:11px;opacity:.8;"></i> Analytics
+                    </button>
+                </div>
+
+                <!-- Today -->
+                <div id="tab-today">
+                    <div style="padding:11px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border-subtle);">
+                        <span style="font-size:12px;color:var(--text-500);">Today's attendance — <span id="bento-today-count">—</span> records</span>
+                        <button class="q-btn q-btn-outline q-btn-sm" onclick="fetchTodayAttendance()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    </div>
+                    <div id="bento-log-body" style="max-height:360px;overflow-y:auto;"></div>
+                </div>
+
+                <!-- All records -->
+                <div id="tab-all" style="display:none;">
+                    <table class="q-table">
+                        <thead><tr><th>#</th><th>Employee</th><th>Date</th><th>Time</th><th>Type</th></tr></thead>
+                        <tbody id="all-attendance-body"><tr class="empty-row"><td colspan="5">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+
+                <!-- Date range -->
+                <div id="tab-range" style="display:none;padding:16px;">
+                    <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;">
+                        <div><label class="q-label">From</label><input type="date" class="q-input" id="fromDate" style="width:160px;"></div>
+                        <div><label class="q-label">To</label><input type="date" class="q-input" id="toDate" style="width:160px;"></div>
+                        <button class="q-btn q-btn-primary" id="fetchRangeBtn"><i class="fas fa-search"></i> Fetch Records</button>
+                    </div>
+                    <table class="q-table">
+                        <thead><tr><th>#</th><th>Employee</th><th>Date</th><th>Time</th></tr></thead>
+                        <tbody id="range-attendance-body"><tr class="empty-row"><td colspan="4">Select dates and click Fetch</td></tr></tbody>
+                    </table>
+                </div>
+
+                <!-- Registrations -->
+                <div id="tab-registrations" style="display:none;">
+                    <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border-subtle);">
+                        <span style="font-size:12px;color:var(--text-500);">Users requesting account access</span>
+                        <button class="q-btn q-btn-outline q-btn-sm" onclick="fetchRegistrations()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    </div>
+                    <div id="registrations-body">
+                        <div class="q-empty">
+                            <div class="q-empty-icon"><i class="fas fa-user-plus" style="font-size:24px;color:var(--text-400);"></i></div>
+                            <div class="q-empty-title">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Biometrics -->
+                <div id="tab-biometrics" style="display:none;">
+                    <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border-subtle);">
+                        <span style="font-size:12px;color:var(--text-500);">Employees requesting face registration</span>
+                        <button class="q-btn q-btn-outline q-btn-sm" onclick="fetchBiometricRequests()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    </div>
+                    <div id="biometrics-body">
+                        <div class="q-empty">
+                            <div class="q-empty-icon"><i class="fas fa-fingerprint" style="font-size:24px;color:var(--text-400);"></i></div>
+                            <div class="q-empty-title">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Heatmap -->
+                <div id="tab-heatmap" style="display:none;padding:20px;">
+                    <div style="margin-bottom:16px;">
+                        <div style="font-size:13px;font-weight:600;color:var(--text-700);margin-bottom:6px;">Employee attendance heatmap</div>
+                        <div style="font-size:12px;color:var(--text-400);margin-bottom:14px;">Search for an employee to view their monthly attendance calendar.</div>
+                        <div class="q-heatmap-search-row">
+                            <input type="text" class="q-input" id="heatmap-search-input"
+                                   placeholder="Type employee name..."
+                                   style="flex:1;max-width:340px;"
+                                   oninput="onHeatmapSearch(this.value)"
+                                   onkeydown="if(event.key==='Enter')searchHeatmap()">
+                            <button class="q-btn q-btn-primary" onclick="searchHeatmap()">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <div id="heatmap-suggestions" class="q-heatmap-suggestions"></div>
+                        </div>
+                    </div>
+                    <div id="heatmap-result">
+                        <div class="q-empty">
+                            <div class="q-empty-icon"><i class="fas fa-calendar-alt" style="font-size:24px;color:var(--text-400);"></i></div>
+                            <div class="q-empty-title">No employee selected</div>
+                            <div class="q-empty-sub">Search for an employee above to view their attendance heatmap</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics -->
+                <div id="tab-analytics" style="display:none;padding:20px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;">
+                        <div>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-800);">Analytics</div>
+                            <div style="font-size:12px;color:var(--text-400);" id="analytics-period-label">Showing data for today</div>
+                        </div>
+                        <div class="q-period-switcher">
+                            <button class="q-period-btn active" data-apd="today"  onclick="setAnalyticsPeriod('today')">Today</button>
+                            <button class="q-period-btn"        data-apd="week"   onclick="setAnalyticsPeriod('week')">This week</button>
+                            <button class="q-period-btn"        data-apd="month"  onclick="setAnalyticsPeriod('month')">This month</button>
+                        </div>
+                    </div>
+                    <div class="q-analytics-grid">
+                        <div class="q-chart-card">
+                            <div class="q-chart-title" id="chart-bar-title">Daily attendance</div>
+                            <div class="q-chart-sub" id="chart-bar-sub">Onsite and remote per day</div>
+                            <div class="q-chart-wrap">
+                                <canvas id="chart-bar"></canvas>
+                            </div>
+                        </div>
+                        <div class="q-chart-card">
+                            <div class="q-chart-title">Onsite vs remote split</div>
+                            <div class="q-chart-sub" id="chart-donut-sub">Type breakdown selected period</div>
+                            <div class="q-chart-wrap">
+                                <canvas id="chart-donut"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="q-chart-card" style="margin-top:16px;">
+                        <div class="q-chart-title" id="chart-line-title">Attendance trend</div>
+                        <div class="q-chart-sub" id="chart-line-sub">Total attendance overtime</div>
+                        <div class="q-chart-wrap q-chart-wrap-sm">
+                            <canvas id="chart-line"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end tabs module -->
+        
+
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='admin_attendance.js') }}"></script>
+{% endblock %}

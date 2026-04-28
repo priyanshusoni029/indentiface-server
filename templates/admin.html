@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% set active_page = 'settings' %}
+
+{% block title %}IdentiFace — Settings{% endblock %}
+
+{% block head_extra %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+
+{% block content %}
+            <div class="q-page-title">Settings</div>
+            <div class="q-page-sub">Geofencing configuration and system management</div>
+
+            <div class="q-settings-layout">
+
+                <!-- LEFT: form -->
+                <div>
+                    <div class="q-module">
+                        <div class="q-mod-head">
+                            <div class="q-mod-title">
+                                <i class="fas fa-map-marker-alt" style="color:#4f46e5;"></i>
+                                Geofencing Configuration
+                            </div>
+                            <span id="geo-status-badge">
+                                {% if settings.geofencing_enabled %}
+                                    <span class="q-pill pill-active">Enabled</span>
+                                {% else %}
+                                    <span class="q-pill pill-absent">Disabled</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div style="padding:20px;">
+                            <form method="POST" action="/admin/settings" id="geo-form">
+                                <div class="q-form-group">
+                                    <div class="q-checkbox-row">
+                                        <input type="checkbox" class="q-checkbox" name="geofencing_enabled"
+                                               id="geofencing_enabled"
+                                               {% if settings.geofencing_enabled %}checked{% endif %}
+                                               onchange="updateMap()">
+                                        <label for="geofencing_enabled" class="q-label" style="margin:0;cursor:pointer;">
+                                            Enable geofencing
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="q-form-group">
+                                    <label class="q-label" for="office_lat">Premises Latitude</label>
+                                    <input type="text" class="q-input" name="office_lat" id="office_lat"
+                                           value="{{ settings.office_lat }}" placeholder="e.g. 28.6139"
+                                           onchange="updateMap()">
+                                </div>
+                                <div class="q-form-group">
+                                    <label class="q-label" for="office_lng">Premises Longitude</label>
+                                    <input type="text" class="q-input" name="office_lng" id="office_lng"
+                                           value="{{ settings.office_lng }}" placeholder="e.g. 77.2090"
+                                           onchange="updateMap()">
+                                </div>
+                                <div class="q-form-group">
+                                    <label class="q-label" for="radius">Radius (meters)</label>
+                                    <input type="number" class="q-input" name="radius" id="radius"
+                                           value="{{ settings.radius }}" placeholder="e.g. 50" min="1" step="1"
+                                           onchange="if(this.value<1)this.value=1;updateMap();">
+                                </div>
+                                <button type="submit" class="q-btn q-btn-primary" style="width:100%;">
+                                    <i class="fas fa-save"></i> Save Settings
+                                </button>
+                            </form>
+
+                            {% with messages = get_flashed_messages() %}
+                              {% if messages %}
+                                <div class="q-alert q-alert-info" style="margin-top:14px;">
+                                    <span class="q-alert-icon"><i class="fas fa-check-circle"></i></span>
+                                    <div class="q-alert-text">{{ messages[0] }}</div>
+                                </div>
+                              {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="q-module" style="margin-top:16px;animation-delay:.15s;">
+                        <div class="q-mod-head">
+                            <div class="q-mod-title">
+                                <i class="fas fa-database" style="color:#4f46e5;"></i>
+                                Database Stats
+                            </div>
+                            <button class="q-mod-action" onclick="fetchDbStats()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div id="db-stats-body">
+                            <div class="q-db-stat"><span class="q-db-key">Loading...</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: map -->
+                <div>
+                    <div class="q-module" style="animation-delay:.1s;">
+                        <div class="q-mod-head">
+                            <div class="q-mod-title">
+                                <i class="fas fa-map" style="color:#4f46e5;"></i>
+                                Geofencing Map
+                            </div>
+                            <button class="q-btn q-btn-outline q-btn-sm" id="use-location-btn" onclick="useMyLocation()">
+                                <i class="fas fa-location-crosshairs"></i>
+                                <span>Use My Location</span>
+                            </button>
+                        </div>
+                        <div style="padding:14px;">
+                            <div id="q-map"
+                                data-lat="{{ settings.office_lat if settings.office_lat is not none else '' }}"
+                                data-lng="{{ settings.office_lng if settings.office_lng is not none else '' }}"
+                                data-radius="{{ settings.radius if settings.radius is not none else '' }}">
+                            </div>
+                            <div style="margin-top:8px;font-size:11.5px;color:var(--text-400);display:flex;align-items:center;gap:5px;">
+                                <i class="fas fa-info-circle"></i>
+                                Click anywhere on the map or drag the pin to set location
+                            </div>
+                            <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <div style="background:var(--bg-surface-2);border-radius:8px;padding:10px 12px;">
+                                    <div style="font-size:11px;color:var(--text-400);margin-bottom:2px;">Latitude</div>
+                                    <div style="font-size:13px;font-weight:500;color:var(--text-800);" id="map-lat-display">{{ settings.office_lat or '—' }}</div>
+                                </div>
+                                <div style="background:var(--bg-surface-2);border-radius:8px;padding:10px 12px;">
+                                    <div style="font-size:11px;color:var(--text-400);margin-bottom:2px;">Longitude</div>
+                                    <div style="font-size:13px;font-weight:500;color:var(--text-800);" id="map-lng-display">{{ settings.office_lng or '—' }}</div>
+                                </div>
+                                <div style="background:var(--bg-surface-2);border-radius:8px;padding:10px 12px;">
+                                    <div style="font-size:11px;color:var(--text-400);margin-bottom:2px;">Radius</div>
+                                    <div style="font-size:13px;font-weight:500;color:var(--text-800);" id="map-radius-display">{{ settings.radius or '—' }}m</div>
+                                </div>
+                                <div style="background:var(--bg-surface-2);border-radius:8px;padding:10px 12px;">
+                                    <div style="font-size:11px;color:var(--text-400);margin-bottom:2px;">Status</div>
+                                    <div style="font-size:13px;font-weight:500;" id="map-status-display">
+                                        {% if settings.geofencing_enabled %}
+                                            <span style="color:var(--green);">● Active</span>
+                                        {% else %}
+                                            <span style="color:var(--text-400);">○ Inactive</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end q-settings-layout -->
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="{{ url_for('static', filename='admin_settings.js') }}"></script>
+{% endblock %}
