@@ -60,7 +60,10 @@ def user_photo():
     try:
         public_url = supabase_storage.get_public_url("profile-photos", f"{name}/profile.jpg")
         if public_url:
-            return jsonify({"image": public_url})
+            import time
+            # Add a timestamp to force the Flutter app to bypass cache
+            cache_buster_url = f"{public_url}?t={int(time.time())}"
+            return jsonify({"image": cache_buster_url})
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error fetching profile photo URL for {name}: {e}")
