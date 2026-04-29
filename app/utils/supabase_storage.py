@@ -83,18 +83,31 @@ class SupabaseStorage:
         """Get the public URL for a file if it exists."""
         if not self.client: return None
         try:
-            # First, check if file exists to avoid returning broken links
+            # Handle empty folder case for root files
             folder = os.path.dirname(path)
             filename = os.path.basename(path)
-            files = self.client.storage.from_(bucket).list(folder)
+            
+            # If path is just "file.jpg", folder is empty. list() expects None or empty string.
+            search_folder = folder if folder else None
+            
+            logger.info(f"[Supabase Storage] Checking existence: Bucket='{bucket}', Folder='{search_folder}', File='{filename}'")
+            
+            files = self.client.storage.from_(bucket).list(search_folder)
+            
+            # Log all files in that folder to find naming mismatches
+            found_names = [f['name'] for f in files]
+            logger.info(f"[Supabase Storage] Files found in folder: {found_names}")
             
             exists = any(f['name'] == filename for f in files)
+            
             if not exists:
+                logger.warning(f"[Supabase Storage] File '{filename}' not found in folder '{search_folder}'")
                 return None
                 
-            return self.client.storage.from_(bucket).get_public_url(path)
+            url = self.client.storage.from_(bucket).get_public_url(path)
+            return url
         except Exception as e:
-            logger.error(f"[Supabase Storage] Error checking file {path}: {e}")
+            logger.error(f"[Supabase Storage] Error checking file {path} in {bucket}: {e}")
             return None
 
 # Global instance
