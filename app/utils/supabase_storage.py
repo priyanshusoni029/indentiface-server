@@ -105,6 +105,7 @@ class SupabaseStorage:
                 return None
                 
             url = self.client.storage.from_(bucket).get_public_url(path)
+            logger.info(f"[Supabase Storage] Final URL for {path}: {url}")
             return url
         except Exception as e:
             logger.error(f"[Supabase Storage] Error checking file {path} in {bucket}: {e}")
