@@ -16,7 +16,9 @@ class SupabaseStorage:
 
     def upload_file(self, bucket: str, remote_path: str, local_path: str):
         """Upload a local file to a Supabase bucket."""
-        if not self.client: return False
+        if not self.client: 
+            print("[Supabase Storage] Client not initialized!")
+            return False
         try:
             with open(local_path, 'rb') as f:
                 self.client.storage.from_(bucket).upload(
@@ -24,9 +26,10 @@ class SupabaseStorage:
                     file=f,
                     file_options={"content-type": "image/jpeg", "x-upsert": "true"}
                 )
+            print(f"[Supabase Storage] Successfully uploaded {remote_path} to bucket {bucket}")
             return True
         except Exception as e:
-            print(f"[Supabase Storage] Upload error: {e}")
+            print(f"[Supabase Storage] Upload error for {remote_path} in {bucket}: {e}")
             return False
 
     def download_file(self, bucket: str, remote_path: str, local_path: str):

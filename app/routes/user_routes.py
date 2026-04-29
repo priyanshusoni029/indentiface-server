@@ -52,14 +52,20 @@ def user_photo():
         return jsonify({"image": None}), 400
 
     from ..utils.supabase_storage import supabase_storage
-    public_url = supabase_storage.get_public_url("profile-photos", f"{name}/profile.jpg")
-    if public_url:
-        return jsonify({"image": public_url})
+    
+    # 1. Try Profile Photo from Supabase
+    try:
+        public_url = supabase_storage.get_public_url("profile-photos", f"{name}/profile.jpg")
+        # Note: We return it if it exists. 
+        # In the future, we could add a check if the file exists using storage.list()
+        if public_url:
+            return jsonify({"image": public_url})
+    except Exception as e:
+        print(f"Error fetching profile photo URL: {e}")
 
-    # Access via module reference so we always get the latest dict after reloads
+    # 2. Fallback to Known Face image
     image_path = face_service.name_to_image.get(name)
     if image_path:
-        # For known faces, we could also return a public URL from known-faces bucket
         known_url = supabase_storage.get_public_url("known-faces", image_path)
         if known_url:
             return jsonify({"image": known_url})
