@@ -1,6 +1,11 @@
 import os
+import logging
 from supabase import create_client, Client
 from config import Config
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class SupabaseStorage:
     def __init__(self):
@@ -17,7 +22,7 @@ class SupabaseStorage:
     def upload_file(self, bucket: str, remote_path: str, local_path: str):
         """Upload a local file to a Supabase bucket."""
         if not self.client: 
-            print("[Supabase Storage] Client not initialized!")
+            logger.error("[Supabase Storage] Client not initialized! Check SUPABASE_URL and SUPABASE_KEY.")
             return False
         try:
             with open(local_path, 'rb') as f:
@@ -26,10 +31,10 @@ class SupabaseStorage:
                     file=f,
                     file_options={"content-type": "image/jpeg", "x-upsert": "true"}
                 )
-            print(f"[Supabase Storage] Successfully uploaded {remote_path} to bucket {bucket}")
+            logger.info(f"[Supabase Storage] Successfully uploaded {remote_path} to bucket {bucket}")
             return True
         except Exception as e:
-            print(f"[Supabase Storage] Upload error for {remote_path} in {bucket}: {e}")
+            logger.error(f"[Supabase Storage] Upload error for {remote_path} in {bucket}: {e}")
             return False
 
     def download_file(self, bucket: str, remote_path: str, local_path: str):
@@ -75,11 +80,21 @@ class SupabaseStorage:
             return False
 
     def get_public_url(self, bucket: str, path: str):
-        """Get the public URL for a file."""
+        """Get the public URL for a file if it exists."""
         if not self.client: return None
         try:
+            # First, check if file exists to avoid returning broken links
+            folder = os.path.dirname(path)
+            filename = os.path.basename(path)
+            files = self.client.storage.from_(bucket).list(folder)
+            
+            exists = any(f['name'] == filename for f in files)
+            if not exists:
+                return None
+                
             return self.client.storage.from_(bucket).get_public_url(path)
-        except Exception:
+        except Exception as e:
+            logger.error(f"[Supabase Storage] Error checking file {path}: {e}")
             return None
 
 # Global instance

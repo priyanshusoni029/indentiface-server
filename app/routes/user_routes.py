@@ -40,7 +40,10 @@ def update_user_photo():
 
     # ── Upload to Supabase ──
     from ..utils.supabase_storage import supabase_storage
-    supabase_storage.upload_file("profile-photos", f"{name}/profile.jpg", local_path)
+    success = supabase_storage.upload_file("profile-photos", f"{name}/profile.jpg", local_path)
+    
+    if not success:
+        return jsonify({"error": "Failed to upload to cloud storage"}), 500
 
     return jsonify({"success": True})
 
@@ -56,12 +59,11 @@ def user_photo():
     # 1. Try Profile Photo from Supabase
     try:
         public_url = supabase_storage.get_public_url("profile-photos", f"{name}/profile.jpg")
-        # Note: We return it if it exists. 
-        # In the future, we could add a check if the file exists using storage.list()
         if public_url:
             return jsonify({"image": public_url})
     except Exception as e:
-        print(f"Error fetching profile photo URL: {e}")
+        import logging
+        logging.getLogger(__name__).error(f"Error fetching profile photo URL for {name}: {e}")
 
     # 2. Fallback to Known Face image
     image_path = face_service.name_to_image.get(name)
