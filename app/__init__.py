@@ -44,7 +44,7 @@ def create_app(config_class=Config):
         from .services.encoder_service import start_face_encoder, refresh_face_database_periodically
         reload_face_data()
         start_face_encoder()
-        refresh_face_database_periodically(interval_minutes=5)
+        refresh_face_database_periodically(interval_minutes=120)
 
     return app
 

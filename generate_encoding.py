@@ -25,9 +25,6 @@ def sync_encodings_with_supabase():
     with app.app_context():
         print("--- Starting Sync with Supabase Storage ---")
         
-        # 1. Get all files from 'known-faces' bucket
-        # Note: Supabase storage list is usually limited to 100 per call, 
-        # but we'll assume a reasonable number for now.
         try:
             # We list the root folders (person names)
             buckets = supabase_storage.client.storage.from_("known-faces").list()
@@ -49,43 +46,54 @@ def sync_encodings_with_supabase():
                         os.makedirs(local_dir, exist_ok=True)
                         local_path = os.path.join(local_dir, filename)
                         
-                        # Download if not exists locally or to ensure fresh copy
                         print(f"Checking {remote_path}...")
+                        
+                        # 1. Check if this file has already been processed by querying its filename
+                        existing = FaceEncoding.query.filter_by(filename=remote_path).first()
+                        if existing:
+                            print(f"Skipping {remote_path} - already exists in database.")
+                            continue
+
+                        # 2. Download ONLY if it is a new/unprocessed image
                         if supabase_storage.download_file("known-faces", remote_path, local_path):
                             file_hash = get_file_hash(local_path)
-                            if not file_hash: continue
+                            if not file_hash:
+                                if os.path.exists(local_path):
+                                    os.remove(local_path)
+                                continue
                             
-                            # Check if already in DB
-                            existing = FaceEncoding.query.filter_by(file_hash=file_hash).first()
-                            if existing:
-                                if existing.name != person_name:
-                                    print(f"Updating name for {filename}: {existing.name} -> {person_name}")
-                                    existing.name = person_name
+                            # 3. Check by file content hash to prevent duplicate entries
+                            existing_by_hash = FaceEncoding.query.filter_by(file_hash=file_hash).first()
+                            if existing_by_hash:
+                                print(f"File content of {remote_path} already exists in DB under another record. Skipping.")
+                                if os.path.exists(local_path):
+                                    os.remove(local_path)
+                                continue
+                            
+                            # 4. Generate face encoding vector
+                            print(f"Encoding new face: {remote_path}")
+                            try:
+                                image = face_recognition.load_image_file(local_path)
+                                encodings = face_recognition.face_encodings(image)
+                                if encodings:
+                                    encoding_blob = np.array(encodings[0], dtype=np.float64).tobytes()
+                                    new_encoding = FaceEncoding(
+                                        name=person_name,
+                                        filename=remote_path,
+                                        file_hash=file_hash,
+                                        encoding=encoding_blob
+                                    )
+                                    db.session.add(new_encoding)
                                     db.session.commit()
-                            else:
-                                # Generate encoding
-                                print(f"Encoding new face: {remote_path}")
-                                try:
-                                    image = face_recognition.load_image_file(local_path)
-                                    encodings = face_recognition.face_encodings(image)
-                                    if encodings:
-                                        encoding_blob = np.array(encodings[0], dtype=np.float64).tobytes()
-                                        new_encoding = FaceEncoding(
-                                            name=person_name,
-                                            filename=remote_path,
-                                            file_hash=file_hash,
-                                            encoding=encoding_blob
-                                        )
-                                        db.session.add(new_encoding)
-                                        db.session.commit()
-                                        print(f"Successfully saved encoding for {person_name}")
-                                    else:
-                                        print(f"No face detected in {local_path}")
-                                except Exception as e:
-                                    print(f"Error encoding {local_path}: {e}")
+                                    print(f"Successfully saved encoding for {person_name}")
+                                else:
+                                    print(f"No face detected in {local_path}")
+                            except Exception as e:
+                                print(f"Error encoding {local_path}: {e}")
                             
                             # Clean up local file to keep container light
-                            # os.remove(local_path) 
+                            if os.path.exists(local_path):
+                                os.remove(local_path)
         except Exception as e:
             print(f"Sync error: {e}")
 
