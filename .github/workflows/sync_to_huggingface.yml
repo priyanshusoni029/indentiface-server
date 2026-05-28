@@ -20,4 +20,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           # Use your Hugging Face username and Space name here
-          git push --force https://priyanshu029:$HF_TOKEN@huggingface.co/spaces/priyanshu029/flask-attendance-server main
+          git push --force https://priyanshu029:$HF_TOKEN@huggingface.co/spaces/priyanshu029/identiFace main
