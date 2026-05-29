@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) {
     document.documentElement.setAttribute('data-theme', saved);
     const icon = document.getElementById('theme-icon');
-    if (icon) icon.textContent = saved === 'dark' ? '☀️' : '🌙';
+    // if (icon) icon.textContent = saved === 'dark' ? '☀️' : '🌙';
   }
 
   /* 2. Display today's date wherever base.html puts a [data-today] element */
