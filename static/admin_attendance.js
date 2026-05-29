@@ -127,11 +127,30 @@ function createSkeletonBioCard() {
     </div>`;
 }
 
+let _bentoOriginals = {};
+
 function showStatSkeletons() {
     const statIds = ['stat-present', 'stat-onsite', 'stat-remote', 'stat-pending'];
     statIds.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.parentElement.parentElement.innerHTML = createSkeletonBentoTile();
+        if (el) {
+            const container = el.parentElement.parentElement;
+            _bentoOriginals[id] = {
+                container: container,
+                html: container.innerHTML
+            };
+            container.innerHTML = createSkeletonBentoTile();
+        }
+    });
+}
+
+function restoreStatSkeletons() {
+    const statIds = ['stat-present', 'stat-onsite', 'stat-remote', 'stat-pending'];
+    statIds.forEach(id => {
+        if (_bentoOriginals[id]) {
+            _bentoOriginals[id].container.innerHTML = _bentoOriginals[id].html;
+            delete _bentoOriginals[id];
+        }
     });
 }
 
@@ -480,6 +499,9 @@ async function fetchStatCards() {
     const present = records.length;
     const onsite  = records.filter(r => (r.Type || r.type || '').toLowerCase() === 'onsite').length;
     const remote  = records.filter(r => (r.Type || r.type || '').toLowerCase() === 'remote').length;
+
+    // ── RESTORE SKELETON HTML BEFORE UPDATING ──
+    restoreStatSkeletons();
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     set('stat-present', present);
