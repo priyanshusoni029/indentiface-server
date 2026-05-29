@@ -18,7 +18,7 @@ function toggleTheme() {
   localStorage.setItem(THEME_KEY, newTheme);
 
   const icon = document.getElementById('theme-icon');
-  if (icon) icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+  // if (icon) icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
 }
 
 /* ─── Toast ──────────────────────────────────────────────────────────────── */
