@@ -2077,3 +2077,127 @@ input:-webkit-autofill:active {
 .login-theme-btn { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: var(--card-bg); color: var(--text-500); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: background var(--dur-fast), color var(--dur-fast); }
 .login-theme-btn:hover { background: var(--bg-hover); color: var(--text-700); }
 
+@keyframes skeleton-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.q-skeleton {
+    background: var(--bg-surface-3);
+    border-radius: var(--radius-sm);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* Skeleton bento tile (for Present, Onsite, Remote, Pending) */
+.q-skeleton-bento-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-xl);
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.q-skeleton-label {
+    height: 10px;
+    width: 60px;
+    border-radius: 4px;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.q-skeleton-ring-num {
+    height: 28px;
+    width: 60px;
+    border-radius: 6px;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    margin-bottom: 8px;
+}
+
+.q-skeleton-ring-sub {
+    height: 11px;
+    width: 100%;
+    border-radius: 4px;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    animation-delay: 0.1s;
+}
+
+.q-skeleton-ring-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+/* Skeleton log row (for Today's attendance) */
+.q-skeleton-log-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.q-skeleton-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+.q-skeleton-text-line {
+    height: 13px;
+    border-radius: 4px;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    flex: 1;
+}
+
+.q-skeleton-text-short {
+    width: 60%;
+}
+
+/* Skeleton bio card (for Registrations/Biometrics) */
+.q-skeleton-bio-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.q-skeleton-bio-photo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+.q-skeleton-bio-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.q-skeleton-bio-line {
+    height: 12px;
+    border-radius: 4px;
+    background: var(--bg-surface-3);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    width: 80%;
+}
+
+.q-skeleton-bio-line:last-child {
+    width: 60%;
+}

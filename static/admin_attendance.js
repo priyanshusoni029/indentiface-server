@@ -91,6 +91,71 @@ function emptyState(icon, title, sub) {
         <div class="q-empty-sub">${sub}</div>
     </div>`;
 }
+
+function createSkeletonBentoTile() {
+    return `<div class="q-skeleton-bento-tile">
+        <div class="q-skeleton-label"></div>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <div style="flex:1;">
+                <div class="q-skeleton-ring-num"></div>
+                <div class="q-skeleton-ring-sub"></div>
+            </div>
+            <div class="q-skeleton-ring-circle"></div>
+        </div>
+    </div>`;
+}
+
+function createSkeletonLogRow() {
+    return `<div class="q-skeleton-log-row">
+        <div class="q-skeleton-avatar"></div>
+        <div style="flex:1;min-width:0;">
+            <div class="q-skeleton-text-line" style="margin-bottom:6px;"></div>
+            <div class="q-skeleton-text-line q-skeleton-text-short"></div>
+        </div>
+        <div class="q-skeleton-text-line q-skeleton-text-short"></div>
+    </div>`;
+}
+
+function createSkeletonBioCard() {
+    return `<div class="q-skeleton-bio-card">
+        <div class="q-skeleton-bio-photo"></div>
+        <div class="q-skeleton-bio-info">
+            <div class="q-skeleton-bio-line"></div>
+            <div class="q-skeleton-bio-line"></div>
+            <div class="q-skeleton-bio-line"></div>
+        </div>
+    </div>`;
+}
+
+function showStatSkeletons() {
+    const statIds = ['stat-present', 'stat-onsite', 'stat-remote', 'stat-pending'];
+    statIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.parentElement.parentElement.innerHTML = createSkeletonBentoTile();
+    });
+}
+
+function showTodaySkeletons() {
+    const body = document.getElementById('bento-log-body');
+    if (body) {
+        body.innerHTML = createSkeletonLogRow() + createSkeletonLogRow() + createSkeletonLogRow();
+    }
+}
+
+function showRegistrationSkeletons() {
+    const body = document.getElementById('registrations-body');
+    if (body) {
+        body.innerHTML = createSkeletonBioCard() + createSkeletonBioCard() + createSkeletonBioCard();
+    }
+}
+
+function showBiometricSkeletons() {
+    const body = document.getElementById('biometrics-body');
+    if (body) {
+        body.innerHTML = createSkeletonBioCard() + createSkeletonBioCard() + createSkeletonBioCard();
+    }
+}
+
 function getStatusConfig(status) {
     const map = {
         pending:  { cls:'pill-pending',  label:'Pending'  },
@@ -386,6 +451,7 @@ function updateRings(present, onsite, remote, pending, roster, period) {
 
 
 async function fetchStatCards() {
+    showStatSkeletons(); 
     const pd = getPeriodDates(_currentPeriod);
 
     // ── CHANGE 1: swap Promise.all fetch() calls with adminFetch ──
@@ -470,6 +536,7 @@ let _monthlyStats   = {};
 let _activeFilter   = 'all';
 
 function fetchTodayAttendance() {
+    showTodaySkeletons(); 
     fetch('/admin/api/attendance/today')
         .then(r => r.json())
         .then(data => {
@@ -579,6 +646,7 @@ function fetchRangeAttendance() {
 function fetchRegistrations() {
     const body = document.getElementById('registrations-body');
     if (!body) return;
+    showRegistrationSkeletons(); 
     body.innerHTML = '<div class="q-empty"><div class="q-empty-title">Loading...</div></div>';
     fetch('/admin/registrations/pending')
         .then(r => r.json())
@@ -648,6 +716,7 @@ function rejectRegistration(id) {
 function fetchBiometricRequests() {
     const body = document.getElementById('biometrics-body');
     if (!body) return;
+    showBiometricSkeletons();
     body.innerHTML = '<div class="q-empty"><div class="q-empty-title">Loading...</div></div>';
     fetch('/admin/biometrics/pending')
         .then(r => r.json())
@@ -1343,6 +1412,9 @@ function checkGlobalAlerts() {
 // DOM READY
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+    showStatSkeletons();
+    showTodaySkeletons();
+
     // Restore theme
     const savedTheme = localStorage.getItem('admin-theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
