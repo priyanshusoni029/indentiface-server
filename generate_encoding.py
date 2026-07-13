@@ -20,10 +20,13 @@ def get_file_hash(filepath):
         print(f"Error reading file {filepath}: {str(e)}")
         return None
 
-def sync_encodings_with_supabase():
+def sync_encodings_with_supabase(filter_user_name: str = None):
     app = create_app()
     with app.app_context():
-        print("--- Starting Sync with Supabase Storage ---")
+        if filter_user_name:
+            print(f"--- Starting Sync with Supabase Storage (User: {filter_user_name}) ---")
+        else:
+            print("--- Starting Sync with Supabase Storage (All Users) ---")
         
         try:
             # We list the root folders (person names)
@@ -34,6 +37,8 @@ def sync_encodings_with_supabase():
 
             for folder in buckets:
                 person_name = folder['name']
+                if filter_user_name and person_name != filter_user_name:
+                    continue
                 if folder.get('id') is None: # It's a folder
                     files = supabase_storage.client.storage.from_("known-faces").list(person_name)
                     for file_info in files:
@@ -98,4 +103,11 @@ def sync_encodings_with_supabase():
             print(f"Sync error: {e}")
 
 if __name__ == "__main__":
-    sync_encodings_with_supabase()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Generate face encodings from Supabase storage')
+    parser.add_argument('--user', type=str, default=None, 
+                        help='Filter encoding generation for a specific user name')
+    
+    args = parser.parse_args()
+    sync_encodings_with_supabase(filter_user_name=args.user)
