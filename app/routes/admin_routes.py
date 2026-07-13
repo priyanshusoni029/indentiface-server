@@ -11,6 +11,7 @@ from ..models.biometric_request import BiometricRequest
 from ..models.app_settings      import AppSettings
 from ..extensions    import db
 from ..utils.decorators import admin_required
+from ..services.encoding_service import generate_encoding_for_user
 from config import Config
 
 admin_bp = Blueprint('admin', __name__)
@@ -246,8 +247,8 @@ def admin_biometrics_approve():
         req.status   = 'approved'
         req.reviewed = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         db.session.commit()
-
-    print(f"[Biometrics] Approved: {name} → known_faces/{name}/ (encoder picks up within 5 min)")
+    generate_encoding_for_user(name)
+    print(f"[Biometrics] Approved: {name} → known_faces/{name}/ (encoding in process)")
     return jsonify({"success": True})
 
 
