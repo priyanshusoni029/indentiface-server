@@ -40,6 +40,13 @@ def recognize():
         if mark_attendance:
             save_attendance(name, location_type)
             print(f"Attendance marked: {name} ({confidence:.0%}) [{location_type}]")
+            # Broadcast attendance update to admin dashboard
+            from ..services.sse_service import broadcast_event
+            broadcast_event('attendance_update', {
+                'action': 'marked',
+                'user_name': name,
+                'location_type': location_type
+            })
         else:
             print(f"Identified (no mark): {name} ({confidence:.0%})")
         image_path = name_to_image.get(name)

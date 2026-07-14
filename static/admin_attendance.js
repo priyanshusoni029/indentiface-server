@@ -1431,6 +1431,93 @@ function checkGlobalAlerts() {
 }
 
 // ════════════════════════════════════════════════════════
+// SSE EVENT HANDLERS
+// ════════════════════════════════════════════════════════
+
+// Handle registration updates
+onSSEEvent('registration_update', function(data) {
+    console.log('[Dashboard] Registration update received:', data);
+    
+    // Update badge counts
+    updateBadge('registrations-pending-badge', data.pending_count);
+    updateBadge('sb-reg-badge', data.pending_count);
+    
+    // If on registrations tab, refresh the list
+    const activeTab = document.querySelector('.q-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'registrations') {
+        fetchRegistrations();
+    }
+    
+    // Refresh stat cards to update pending count
+    fetchStatCards();
+    
+    // Show notification toast
+    if (data.action === 'new_submission') {
+        showToast(`New registration: ${data.user_name}`, 'info');
+    } else if (data.action === 'approved') {
+        showToast(`Registration approved: ${data.user_name}`, 'success');
+    } else if (data.action === 'rejected') {
+        showToast(`Registration rejected: ${data.user_name}`, 'warning');
+    }
+});
+
+// Handle biometric updates
+onSSEEvent('biometric_update', function(data) {
+    console.log('[Dashboard] Biometric update received:', data);
+    
+    // Update badge counts
+    updateBadge('biometrics-pending-badge', data.pending_count);
+    updateBadge('sb-bio-badge', data.pending_count);
+    
+    // If on biometrics tab, refresh the list
+    const activeTab = document.querySelector('.q-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'biometrics') {
+        fetchBiometricRequests();
+    }
+    
+    // Refresh stat cards to update pending count
+    fetchStatCards();
+    
+    // Show notification toast
+    if (data.action === 'new_submission') {
+        showToast(`New biometric: ${data.user_name}`, 'info');
+    } else if (data.action === 'approved') {
+        showToast(`Biometric approved: ${data.user_name}`, 'success');
+    } else if (data.action === 'rejected') {
+        showToast(`Biometric rejected: ${data.user_name}`, 'warning');
+    }
+});
+
+// Handle attendance updates (when user marks attendance)
+onSSEEvent('attendance_update', function(data) {
+    console.log('[Dashboard] Attendance update received:', data);
+    
+    // Refresh today's attendance if on today tab
+    const activeTab = document.querySelector('.q-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'today') {
+        fetchTodayAttendance();
+    }
+    
+    // Refresh stat cards (updates Present/Onsite/Remote counts)
+    fetchStatCards();
+    
+    // Update sparkline chart
+    fetchSparklineData();
+    
+    // Show notification
+    showToast(`Attendance marked: ${data.user_name} (${data.location_type})`, 'success');
+});
+
+// Handle stats updates (optional - for periodic aggregated stats)
+onSSEEvent('stats_update', function(data) {
+    console.log('[Dashboard] Stats update received:', data);
+    fetchStatCards();
+    fetchSparklineData();
+});
+
+
+
+// ════════════════════════════════════════════════════════
 // DOM READY
 // ════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
@@ -1462,10 +1549,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const rangeBtn = document.getElementById('fetchRangeBtn');
         if (rangeBtn) rangeBtn.addEventListener('click', fetchRangeAttendance);
 
-        // Auto-refresh
-        setInterval(fetchStatCards,    30000);
-        setInterval(fetchRealtimeLog,  10000);
-        setInterval(fetchSparklineData, 120000);
+        // // Auto-refresh
+        // setInterval(fetchStatCards,    30000);
+        // setInterval(fetchRealtimeLog,  10000);
+        // setInterval(fetchSparklineData, 120000);
 
         // Session storage tab restore (from admin.html links)
         const openTab = sessionStorage.getItem('openTab');

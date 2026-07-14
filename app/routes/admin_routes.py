@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from sqlalchemy import case
 from flask import (Blueprint, request, jsonify, render_template,
-                   redirect, flash, url_for, session, send_from_directory)
+                   redirect, flash, url_for, session, send_from_directory,Response )
 from ..models.user              import User
 from ..models.attendance        import Attendance
 from ..models.biometric_request import BiometricRequest
@@ -12,9 +12,34 @@ from ..models.app_settings      import AppSettings
 from ..extensions    import db
 from ..utils.decorators import admin_required
 from ..services.encoding_service import generate_encoding_for_user
+from ..services.sse_service import add_client, stream_events, broadcast_event
+from ..services.fcm_service import (
+    send_registration_approved_notification,
+    send_registration_rejected_notification,
+    send_biometric_approved_notification,
+    send_biometric_rejected_notification
+)
+
 from config import Config
 
 admin_bp = Blueprint('admin', __name__)
+
+# ── SSE Stream ──
+
+@admin_bp.route('/admin/sse/stream')
+@admin_required
+def sse_stream():
+    """Server-Sent Events endpoint for real-time dashboard updates."""
+    client = add_client()
+    return Response(
+        stream_events(client),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',  # Disable nginx buffering
+            'Connection': 'keep-alive'
+        }
+    )
 
 
 # ── Session auth ──
@@ -169,6 +194,15 @@ def admin_registrations_approve():
     if user:
         user.status = 'active'
         db.session.commit()
+        if user.fcm_token :
+            send_registration_approved_notification(user.fcm_token, user.name)
+        pending_count = User.query.filter(User.status != 'active').count()
+        broadcast_event('registration_update', {
+            'action': 'approved',
+            'user_id': uid,
+            'user_name': user.name,
+            'pending_count': pending_count
+        })
     return jsonify({"success": True})
 
 
@@ -182,6 +216,17 @@ def admin_registrations_reject():
     if user:
         user.status = 'rejected'
         db.session.commit()
+        # Send FCM notification
+        if user.fcm_token:
+          send_registration_rejected_notification(user.fcm_token, user.name)
+
+        pending_count = User.query.filter(User.status != 'active').count()
+        broadcast_event('registration_update', {
+            'action': 'rejected',
+            'user_id': uid,
+            'user_name': user.name,
+            'pending_count': pending_count
+        })
     return jsonify({"success": True})
 
 
@@ -247,7 +292,18 @@ def admin_biometrics_approve():
         req.status   = 'approved'
         req.reviewed = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         db.session.commit()
+        user = User.query.filter_by(name=name).first()
+        if user and user.fcm_token:
+            send_biometric_approved_notification(user.fcm_token, name)
     generate_encoding_for_user(name)
+    
+    pending_count = BiometricRequest.query.filter_by(status='pending').count()
+    broadcast_event('biometric_update', {
+        'action': 'approved',
+        'user_name': name,
+        'pending_count': pending_count
+    })
+    
     print(f"[Biometrics] Approved: {name} → known_faces/{name}/ (encoding in process)")
     return jsonify({"success": True})
 
@@ -276,7 +332,16 @@ def admin_biometrics_reject():
         req.status   = 'rejected'
         req.reviewed = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         db.session.commit()
-
+        user = User.query.filter_by(name=name).first()
+        if user and user.fcm_token:
+            send_biometric_rejected_notification(user.fcm_token, name)
+    pending_count = BiometricRequest.query.filter_by(status='pending').count()
+    broadcast_event('biometric_update', {
+        'action': 'rejected',
+        'user_name': name,
+        'pending_count': pending_count
+    })
+    
     print(f"[Biometrics] Rejected: {name}")
     return jsonify({"success": True})
 

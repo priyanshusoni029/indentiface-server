@@ -48,6 +48,16 @@ def register():
     try:
         db.session.add(User(email=email, password_hash=pw_hash, name=name, status='pending'))
         db.session.commit()
+        # Broadcast new registration to admin dashboard
+        from ..services.sse_service import broadcast_event
+        pending_count = User.query.filter(User.status != 'active').count()
+        broadcast_event('registration_update', {
+            'action': 'new_submission',
+            'user_name': name,
+            'user_email': email,
+            'pending_count': pending_count
+        })
+        
         return jsonify({"success": True, "message": "Registration submitted. Awaiting admin approval."})
     except Exception:
         db.session.rollback()

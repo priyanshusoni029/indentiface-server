@@ -19,3 +19,4 @@ ultralytics==8.4.7
 ultralytics-thop==2.0.18
 scipy==1.17.0
 pillow==12.1.0
+google-auth==2.34.0

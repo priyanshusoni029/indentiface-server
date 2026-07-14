@@ -265,7 +265,8 @@
 
 <!-- base.js must load before any page-specific script -->
 <script src="{{ url_for('static', filename='base.js') }}"></script>
-
+<!-- SSE client for real-time updates -->
+<script src="{{ url_for('static', filename='sse_client.js') }}"></script>
 <!-- Page-specific scripts (Chart.js, Leaflet, admin_attendance.js, etc.) -->
 {% block scripts %}{% endblock %}
 

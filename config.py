@@ -12,6 +12,12 @@ class Config:
     # ── Supabase Storage ──
     SUPABASE_URL = os.environ.get('SUPABASE_URL')
     SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+    # ── Firebase Cloud Messaging (HTTP v1 API) ──
+    FIREBASE_CREDENTIALS_PATH = os.environ.get(
+        'FIREBASE_CREDENTIALS_PATH', 
+        os.path.join(BASE_DIR, 'identiface-e88d5-firebase-adminsdk-fbsvc-ffada08e7c.json')
+)
+
 
     # ── SQLAlchemy ──
     # Check for Supabase/PostgreSQL URL first, fallback to local SQLite

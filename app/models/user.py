@@ -10,5 +10,6 @@ class User(db.Model):
     password_hash = db.Column(db.Text,    nullable=False)
     name          = db.Column(db.Text,    nullable=False)
     status        = db.Column(db.Text,    nullable=False, default='active')
+    fcm_token     = db.Column(db.Text,    nullable=True)  # Firebase Cloud Messaging token
     created_at    = db.Column(db.Text,    nullable=False,
                               default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

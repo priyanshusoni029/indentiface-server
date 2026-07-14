@@ -19,3 +19,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+# Firebase Admin SDK
+firebase-adminsdk.json
+firebase-*.json

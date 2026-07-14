@@ -39,6 +39,15 @@ def biometrics_request():
     db.session.add(BiometricRequest(name=name, photo=unique_filename, status='pending'))
     db.session.commit()
 
+     # Broadcast new biometric submission to admin dashboard
+    from ..services.sse_service import broadcast_event
+    pending_count = BiometricRequest.query.filter_by(status='pending').count()
+    broadcast_event('biometric_update', {
+        'action': 'new_submission',
+        'user_name': name,
+        'pending_count': pending_count
+    })
+    
     return jsonify({"success": True, "status": "pending"})
 
 

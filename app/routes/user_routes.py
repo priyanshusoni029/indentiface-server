@@ -97,3 +97,47 @@ def serve_image(filename):
         from flask import redirect
         return redirect(public_url)
     return send_from_directory(Config.KNOWN_FACES_DIR, filename)
+
+@user_bp.route('/user/fcm/register', methods=['POST'])
+def register_fcm_token():
+    """Register or update FCM token for a user."""
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    fcm_token = data.get('fcm_token', '').strip()
+    
+    if not name or not fcm_token:
+        return jsonify({"error": "name and fcm_token required"}), 400
+    
+    try:
+        user = User.query.filter_by(name=name).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        user.fcm_token = fcm_token
+        db.session.commit()
+        print(f"[FCM] Token registered for {name}")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@user_bp.route('/user/fcm/unregister', methods=['POST'])
+def unregister_fcm_token():
+    """Remove FCM token for a user (on logout)."""
+    data = request.get_json() or {}
+    name = data.get('name', '').strip()
+    
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    
+    try:
+        user = User.query.filter_by(name=name).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        user.fcm_token = None
+        db.session.commit()
+        print(f"[FCM] Token unregistered for {name}")
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
