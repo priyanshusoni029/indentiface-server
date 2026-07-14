@@ -2,8 +2,8 @@ import os
 from flask import Blueprint, request, jsonify, send_from_directory
 from ..models.user import User
 from ..services import face_service
+from ..extensions import db
 from config import Config
-from extensions import db
 
 user_bp = Blueprint('user', __name__)
 

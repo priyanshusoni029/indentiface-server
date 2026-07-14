@@ -1,15 +1,58 @@
 """
 Firebase Cloud Messaging (FCM) service for sending push notifications.
+Uses HTTP v1 API with OAuth 2.0 service account authentication.
 """
 
 import requests
 import json
+import time
+from google.auth.transport.requests import Request
+from google.oauth2 import service_account
 from config import Config
+
+# ── Token cache (avoid regenerating on every request) ──
+_cached_token = None
+_token_expiry = 0
+
+SCOPES = ['https://www.googleapis.com/auth/firebase.messaging']
+
+
+def _get_access_token():
+    """
+    Get OAuth 2.0 access token from service account JSON.
+    Caches token for 55 minutes (expires in 1 hour).
+    """
+    global _cached_token, _token_expiry
+    
+    # Return cached token if still valid
+    if _cached_token and time.time() < _token_expiry:
+        return _cached_token
+    
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+            Config.FIREBASE_CREDENTIALS_PATH,
+            scopes=SCOPES
+        )
+        
+        credentials.refresh(Request())
+        
+        _cached_token = credentials.token
+        _token_expiry = time.time() + 3300  # 55 minutes
+        
+        print(f"[FCM] New access token generated (expires in 55 min)")
+        return _cached_token
+        
+    except FileNotFoundError:
+        print(f"[FCM] Error: Service account JSON not found at {Config.FIREBASE_CREDENTIALS_PATH}")
+        return None
+    except Exception as e:
+        print(f"[FCM] Error generating access token: {e}")
+        return None
 
 
 def send_fcm_notification(fcm_token: str, title: str, body: str, data: dict = None):
     """
-    Send push notification to a specific device via FCM.
+    Send push notification to a specific device via FCM HTTP v1 API.
     
     Args:
         fcm_token: User's FCM registration token
@@ -20,42 +63,68 @@ def send_fcm_notification(fcm_token: str, title: str, body: str, data: dict = No
     Returns:
         bool: True if sent successfully, False otherwise
     """
-    if not fcm_token or not Config.FCM_SERVER_KEY:
-        print("[FCM] Missing FCM token or server key")
+    if not fcm_token:
+        print("[FCM] Missing FCM token")
         return False
     
-    url = "https://fcm.googleapis.com/fcm/send"
+    # Get OAuth 2.0 access token
+    access_token = _get_access_token()
+    if not access_token:
+        print("[FCM] Failed to get access token")
+        return False
+    
+    # Extract project ID from service account JSON
+    try:
+        with open(Config.FIREBASE_CREDENTIALS_PATH) as f:
+            project_id = json.load(f)['project_id']
+    except Exception as e:
+        print(f"[FCM] Error reading project ID: {e}")
+        return False
+    
+    # HTTP v1 API endpoint
+    url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
     
     headers = {
-        "Authorization": f"key={Config.FCM_SERVER_KEY}",
+        "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
     
-    payload = {
-        "to": fcm_token,
-        "priority": "high",
-        "notification": {
-            "title": title,
-            "body": body,
-            "sound": "default",
-            "badge": "1"
+    # Build message payload
+    message = {
+        "message": {
+            "token": fcm_token,
+            "notification": {
+                "title": title,
+                "body": body
+            },
+            "android": {
+                "priority": "high",
+                "notification": {
+                    "sound": "default",
+                    "channel_id": "high_importance_channel"
+                }
+            },
+            "apns": {
+                "payload": {
+                    "aps": {
+                        "sound": "default",
+                        "badge": 1
+                    }
+                }
+            }
         }
     }
     
+    # Add custom data if provided
     if data:
-        payload["data"] = data
+        message["message"]["data"] = {k: str(v) for k, v in data.items()}
     
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=10)
+        response = requests.post(url, headers=headers, data=json.dumps(message), timeout=10)
         
         if response.status_code == 200:
-            result = response.json()
-            if result.get('success') == 1:
-                print(f"[FCM] Notification sent successfully to token: {fcm_token[:20]}...")
-                return True
-            else:
-                print(f"[FCM] Failed to send notification: {result}")
-                return False
+            print(f"[FCM] Notification sent successfully to token: {fcm_token[:20]}...")
+            return True
         else:
             print(f"[FCM] HTTP error {response.status_code}: {response.text}")
             return False

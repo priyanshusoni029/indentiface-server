@@ -195,7 +195,7 @@ def admin_registrations_approve():
         user.status = 'active'
         db.session.commit()
         if user.fcm_token :
-            send_registration_approved_notification(user.fcm_token, user.name)
+            send_registration_approved_notification(user.name, user.fcm_token)
         pending_count = User.query.filter(User.status != 'active').count()
         broadcast_event('registration_update', {
             'action': 'approved',
@@ -218,7 +218,7 @@ def admin_registrations_reject():
         db.session.commit()
         # Send FCM notification
         if user.fcm_token:
-          send_registration_rejected_notification(user.fcm_token, user.name)
+          send_registration_rejected_notification(user.name, user.fcm_token)
 
         pending_count = User.query.filter(User.status != 'active').count()
         broadcast_event('registration_update', {
@@ -294,7 +294,7 @@ def admin_biometrics_approve():
         db.session.commit()
         user = User.query.filter_by(name=name).first()
         if user and user.fcm_token:
-            send_biometric_approved_notification(user.fcm_token, name)
+            send_biometric_approved_notification(user.name, user.fcm_token)
     generate_encoding_for_user(name)
     
     pending_count = BiometricRequest.query.filter_by(status='pending').count()
@@ -334,7 +334,7 @@ def admin_biometrics_reject():
         db.session.commit()
         user = User.query.filter_by(name=name).first()
         if user and user.fcm_token:
-            send_biometric_rejected_notification(user.fcm_token, name)
+            send_biometric_rejected_notification(user.name, user.fcm_token)
     pending_count = BiometricRequest.query.filter_by(status='pending').count()
     broadcast_event('biometric_update', {
         'action': 'rejected',
