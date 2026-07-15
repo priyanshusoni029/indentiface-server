@@ -22,3 +22,5 @@ Thumbs.db
 # Firebase Admin SDK
 firebase-adminsdk.json
 firebase-*.json
+*firebase*.json
+identiface-e88d5-firebase-adminsdk-fbsvc-ffada08e7c.json
