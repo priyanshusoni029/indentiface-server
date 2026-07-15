@@ -4,6 +4,19 @@ from config import Config
 
 
 def create_app(config_class=Config):
+    import os
+    import json
+    firebase_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+    if firebase_json:
+        try:
+            firebase_path = '/app/firebase-credentials.json'
+            with open(firebase_path, 'w') as f:
+                json.dump(json.loads(firebase_json), f)
+            os.environ['FIREBASE_CREDENTIALS_PATH'] = firebase_path
+            print(f"[Firebase] Credentials written to {firebase_path}")
+        except Exception as e:
+            print(f"[Firebase] Error writing credentials: {e}")
+            
     app = Flask(__name__, template_folder='../templates', static_folder='../static')
     app.config.from_object(config_class)
 
